@@ -8,7 +8,7 @@
     "url": "git+https://github.com/juxhouse/tardi.games-build.git"
   },
   "bin": {
-    "tardi-build": "./cli.js"
+    "tardi-build": "cli.js"
   },
   "files": [
     "cli.js"
