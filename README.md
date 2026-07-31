@@ -35,3 +35,9 @@ In a game's `package.json`:
 
 The build only emits `hand.js` and `table.js` next to `src/`; it never wipes the
 game repo.
+
+
+## Releasing New Versions
+
+npm version patch
+git push --follow-tags
