@@ -28,7 +28,7 @@ In a game's `package.json`:
     "dev": "tardi-build dev"
   },
   "devDependencies": {
-    "@juxhouse/tardi-build": "^0.1.0"
+    "@juxhouse/tardi-build": "*"
   }
 }
 ```
