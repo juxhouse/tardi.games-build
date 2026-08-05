@@ -11,7 +11,6 @@
 // is two self-contained ES5 IIFE bundles that load on a 2018 Tizen TV
 // (Chromium ~38-56), per essence/docs/COMPATIBILITY.md.
 
-var path = require('path')
 var webpack = require('webpack')
 
 var cwd = process.cwd()
@@ -44,13 +43,6 @@ function makeConfig(isDev) {
       splitChunks: false,
     },
     performance: { hints: false },
-    // Babel's useBuiltIns injects `core-js` requires into the game's own
-    // modules, so webpack resolves them from the game directory. That works
-    // only while npm hoists core-js up there; with a nested or linked install
-    // it is not there. Fall back to this package's own node_modules.
-    resolve: {
-      modules: ['node_modules', path.join(__dirname, 'node_modules')],
-    },
     module: {
       rules: [
         {
