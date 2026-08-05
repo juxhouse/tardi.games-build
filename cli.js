@@ -44,6 +44,13 @@ function makeConfig(isDev) {
       splitChunks: false,
     },
     performance: { hints: false },
+    // Babel's useBuiltIns injects `core-js` requires into the game's own
+    // modules, so webpack resolves them from the game directory. That works
+    // only while npm hoists core-js up there; with a nested or linked install
+    // it is not there. Fall back to this package's own node_modules.
+    resolve: {
+      modules: ['node_modules', path.join(__dirname, 'node_modules')],
+    },
     module: {
       rules: [
         {
@@ -99,17 +106,43 @@ function runBuild() {
 
 function runDev() {
   var WebpackDevServer = require('webpack-dev-server')
+  var port = 3142
+  var url = 'http://localhost:' + port + '/dev/'
   var compiler = webpack(makeConfig(true))
   var server = new WebpackDevServer({
     static: { directory: cwd, publicPath: '/' },
     devMiddleware: { publicPath: '/', writeToDisk: false },
     headers: { 'Access-Control-Allow-Origin': '*' },
     open: ['/dev/'],
-    port: 3142,
+    port: port,
     liveReload: true,
+    // The game repo is served at the root, so bare localhost:3142 would show a
+    // file listing. Send it to the dev harness instead: the root URL is what a
+    // dev types or what the browser keeps from a previous session.
+    setupMiddlewares: function (middlewares, devServer) {
+      devServer.app.get('/', function (_req, res) {
+        res.redirect('/dev/')
+      })
+      return middlewares
+    },
   }, compiler)
 
-  server.start().catch(function (err) {
+  server.start().then(function () {
+    // `open` above launches the browser, but it fails silently over SSH, in
+    // containers and in WSL, so always print the link too. Announce it after the
+    // first build instead of at startup: that is when the harness is actually
+    // ready, and the link ends up under the webpack stats rather than above them.
+    var announced = false
+    compiler.hooks.done.tap('tardi-build', function () {
+      if (announced) return
+      announced = true
+      // webpack-dev-middleware prints the build stats from a nextTick callback,
+      // so defer past it to keep the link on the last line.
+      setImmediate(function () {
+        process.stdout.write('\n  Open your game here: ' + url + '\n\n')
+      })
+    })
+  }).catch(function (err) {
     console.error(err.stack || err)
     process.exit(1)
   })
