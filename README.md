@@ -1,4 +1,4 @@
-# @juxhouse/tardi-build
+# @juxhouse/tardi.games-build
 
 The single, central definition of how a [Tardi](https://tardi.games) game is built.
 
