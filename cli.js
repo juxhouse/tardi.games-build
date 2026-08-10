@@ -3,7 +3,9 @@
 
 // tardi-build: the single, central definition of how a Tardi game is built.
 //
-//   tardi-build        build src/hand.js + src/table.js -> ./hand.js + ./table.js (ES5)
+//   tardi-build        build src/hand.js + src/table.js -> dist/ (ES5), plus a copy
+//                      of assets/ and game.json: dist/ is the whole publishable game,
+//                      and the only place the build ever writes
 //   tardi-build dev    same build in watch mode, served with the game's dev/ harness
 //
 // A game repo lists @juxhouse/tardi-build as a devDependency and runs it via an npm
@@ -11,9 +13,12 @@
 // is two self-contained ES5 IIFE bundles that load on a 2018 Tizen TV
 // (Chromium ~38-56), per essence/docs/COMPATIBILITY.md.
 
+var fs = require('fs')
+var path = require('path')
 var webpack = require('webpack')
 
 var cwd = process.cwd()
+var dist = path.join(cwd, 'dist')
 var command = process.argv[2] || 'build'
 
 // Babel resolves loaders/presets from this package's own install location, so
@@ -28,12 +33,11 @@ function makeConfig(isDev) {
       table: './src/table.js',
     },
     output: {
-      path: cwd,
+      path: dist,
       filename: '[name].js',
-      publicPath: '/',
+      publicPath: '/dist/',
       iife: true,
-      // Never wipe the game repo: we only emit hand.js/table.js next to src/.
-      clean: false,
+      clean: !isDev,
     },
     optimization: {
       // Readable output and one self-contained file per entry: no minify, no
@@ -93,7 +97,25 @@ function runBuild() {
     if (stats.hasErrors()) {
       process.exit(1)
     }
+
+    copyStaticFiles()
   })
+}
+
+// dist/ is what gets published, so it needs everything the platform reads from a
+// game: the two bundles webpack just wrote, plus the game's metadata and assets.
+function copyStaticFiles() {
+  copy('game.json')
+  copy('assets')
+}
+
+function copy(name) {
+  var from = path.join(cwd, name)
+  if (!fs.existsSync(from)) {
+    console.error('tardi-build: warning: no ' + name + ' found, so dist/ has none either.')
+    return
+  }
+  fs.cpSync(from, path.join(dist, name), { recursive: true })
 }
 
 function runDev() {
@@ -103,7 +125,7 @@ function runDev() {
   var compiler = webpack(makeConfig(true))
   var server = new WebpackDevServer({
     static: { directory: cwd, publicPath: '/' },
-    devMiddleware: { publicPath: '/', writeToDisk: false },
+    devMiddleware: { publicPath: '/dist/', writeToDisk: false },
     headers: { 'Access-Control-Allow-Origin': '*' },
     open: ['/dev/'],
     port: port,

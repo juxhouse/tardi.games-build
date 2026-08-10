@@ -15,8 +15,18 @@ npm install --save-dev @juxhouse/tardi-build
 ## Usage
 
 ```sh
-tardi-build        # build src/hand.js + src/table.js -> ./hand.js + ./table.js (ES5)
+tardi-build        # build src/hand.js + src/table.js -> dist/ (ES5)
 tardi-build dev    # same build in watch mode, served with the game's dev/ harness on port 3142
+```
+
+A build writes the whole publishable game into `dist/`:
+
+```
+dist/
+  hand.js
+  table.js
+  game.json      copied from the repo root
+  assets/        copied from the repo root
 ```
 
 In a game's `package.json`:
@@ -37,8 +47,10 @@ In a game's `package.json`:
 and prints that link when the build finishes, for when it cannot open a browser
 itself (over SSH, in a container, in WSL). The root URL redirects there too.
 
-The build only emits `hand.js` and `table.js` next to `src/`; it never wipes the
-game repo.
+The build only ever writes to `dist/`, which it clears first; it never touches the
+rest of the game repo. `tardi-build dev` writes nothing to disk — it serves the
+bundles from memory at the same URLs a build writes them to, `/dist/hand.js` and
+`/dist/table.js`, which is what the game's `dev/index.html` loads.
 
 
 ## Testing Locally
