@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tardi Game Dev</title>
+  <style>
+    :root { font-size: calc(6px + 1.2vmin); }
+
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden;
+      background: #0f172a; color: #f8fafc; font-family: Arial, sans-serif; }
+    body { display: grid; gap: 12px; padding: 12px; box-sizing: border-box; }
+    .col { display: flex; flex-direction: column; min-height: 0; }
+    .label { font-size: 0.8rem; opacity: 0.7; margin: 0 0 6px; }
+    .frame { border: 0; flex: 1; width: 100%; border-radius: 8px; background: #020617; }
+    .banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+      background: #15803d; padding: 8px 18px; border-radius: 6px; display: none; }
+  </style>
+</head>
+<body>
+  <script>
+    // The dev harness shipped with @juxhouse/tardi-build: hosts one table and one
+    // hand per player for the game in the current directory, and routes messages
+    // between them, doing the same intent translation the Tardi platform does.
+    // No PeerJS, no lobby. Run with `npm run dev`.
+    //
+    // It is generic: the game's title and player count come from its game.json,
+    // which the dev server serves at /game.json. A game that wants a different
+    // harness can put its own dev/index.html in its repo; that one wins.
+    (function () {
+      var SCRIPT = { table: '/dist/table.js', hand: '/dist/hand.js' }
+
+      var banner = document.createElement('div')
+      banner.className = 'banner'
+
+      var players = []
+      var handFrames = {}
+      var table
+
+      loadGame(start)
+
+      // The harness cannot be built until we know how many hands to show, so it
+      // waits for game.json. A game.json that is missing or unreadable is a bug
+      // in the game, not a reason to show nothing: fall back to two players.
+      function loadGame(done) {
+        var request = new XMLHttpRequest()
+        request.open('GET', '/game.json', true)
+        request.onload = function () {
+          var game = {}
+          try {
+            game = JSON.parse(request.responseText)
+          } catch (e) {
+            warn('game.json is not valid JSON, so the harness is using its defaults.')
+          }
+          done(game)
+        }
+        request.onerror = function () {
+          warn('No game.json found, so the harness is using its defaults.')
+          done({})
+        }
+        request.send()
+      }
+
+      function start(game) {
+        if (game.title) document.title = 'Tardi Game Dev - ' + game.title
+        players = makePlayers(game)
+
+        // One column per hand with the table, wider, in the middle.
+        var left = Math.ceil(players.length / 2)
+        document.body.style.gridTemplateColumns =
+          repeat('1fr ', left) + '1.6fr ' + repeat(' 1fr', players.length - left)
+
+        table = makeFrame('Table (TV)', SCRIPT.table)
+        for (var i = 0; i < players.length; i++) {
+          document.body.appendChild(makeHand(players[i]).col)
+          if (i === left - 1) document.body.appendChild(table.col)
+        }
+        document.body.appendChild(banner)
+
+        window.addEventListener('message', onMessage)
+        // The platform tells the table who is playing; do the same once it loads.
+        table.frame.addEventListener('load', notifyPlayers)
+      }
+
+      // A game declares a range of players; dev on the minimum, which is the
+      // configuration every game supports and the one it is usually written for.
+      function makePlayers(game) {
+        var count = (game.players && game.players.min) || 2
+        var made = []
+        for (var i = 1; i <= count; i++) {
+          made.push({ playerId: 'p' + i, nick: 'Player ' + i })
+        }
+        return made
+      }
+
+      function repeat(text, times) {
+        var out = ''
+        for (var i = 0; i < times; i++) out += text
+        return out
+      }
+
+      function onMessage(event) {
+        var msg = event.data || {}
+        if (event.source === table.frame.contentWindow) {
+          fromTable(msg)
+        } else {
+          fromHand(event.source, msg)
+        }
+      }
+
+      function fromTable(msg) {
+        if (msg.intent === 'tardi.table.sendMessageToHand') {
+          var frame = handFrames[msg.playerId]
+          if (frame) {
+            frame.contentWindow.postMessage(
+              assign({}, msg, { intent: 'tardi.table.sendGameStateToHand' }), '*')
+          }
+        } else if (msg.intent === 'tardi.table.gameOver') {
+          show(msg.victor ? nickOf(msg.victor) + ' wins!' : 'Draw!')
+        }
+      }
+
+      function fromHand(source, msg) {
+        var playerId = handIdOf(source)
+        if (!playerId) return
+        if (msg.intent === 'tardi.hand.sendMessageToTable' || msg.intent === 'tardi.hand.ackTableState') {
+          table.frame.contentWindow.postMessage(
+            { intent: 'tardi.platform.sendToTable', playerId: playerId, payload: msg }, '*')
+        }
+      }
+
+      function notifyPlayers() {
+        table.frame.contentWindow.postMessage(
+          { intent: 'tardi.platform.notifyPlayersChange', players: players }, '*')
+      }
+
+      function makeHand(player) {
+        var made = makeFrame('Hand - ' + player.nick, SCRIPT.hand)
+        handFrames[player.playerId] = made.frame
+        return made
+      }
+
+      function makeFrame(label, scriptUrl) {
+        var col = document.createElement('div')
+        col.className = 'col'
+        var caption = document.createElement('p')
+        caption.className = 'label'
+        caption.textContent = label
+        var frame = document.createElement('iframe')
+        frame.className = 'frame'
+        frame.title = label
+        frame.sandbox = 'allow-scripts allow-same-origin'
+        frame.srcdoc = srcdoc(scriptUrl)
+        col.appendChild(caption)
+        col.appendChild(frame)
+        return { col: col, frame: frame }
+      }
+
+      function srcdoc(scriptUrl) {
+        return '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+          '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+          '<style>html,body{margin:0;width:100%;height:100%;background:#020617;color:#f8fafc}</style>' +
+          '</head><body><script src="' + scriptUrl + '"><\/script></body></html>'
+      }
+
+      function handIdOf(source) {
+        for (var id in handFrames) {
+          if (handFrames[id].contentWindow === source) return id
+        }
+        return null
+      }
+
+      function nickOf(playerId) {
+        for (var i = 0; i < players.length; i++) {
+          if (players[i].playerId === playerId) return players[i].nick
+        }
+        return playerId
+      }
+
+      function show(text) {
+        banner.textContent = text
+        banner.style.display = 'block'
+      }
+
+      function warn(text) {
+        if (window.console && console.warn) console.warn('tardi-build dev: ' + text)
+      }
+
+      // The harness runs in the dev browser, but that can be an old TV browser
+      // too, and Object.assign is not there before Chromium 45.
+      function assign(target) {
+        for (var i = 1; i < arguments.length; i++) {
+          var source = arguments[i]
+          for (var key in source) {
+            if (Object.prototype.hasOwnProperty.call(source, key)) target[key] = source[key]
+          }
+        }
+        return target
+      }
+    }())
+  </script>
+</body>
+</html>

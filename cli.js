@@ -6,7 +6,7 @@
 //   tardi-build        build src/hand.js + src/table.js -> dist/ (ES5), plus a copy
 //                      of assets/ and game.json: dist/ is the whole publishable game,
 //                      and the only place the build ever writes
-//   tardi-build dev    same build in watch mode, served with the game's dev/ harness
+//   tardi-build dev    same build in watch mode, served with the dev harness
 //
 // A game repo lists @juxhouse/tardi-build as a devDependency and runs it via an npm
 // script ("build": "tardi-build"); the dev never configures a bundler. Output
@@ -124,7 +124,14 @@ function runDev() {
   var url = 'http://localhost:' + port + '/dev/'
   var compiler = webpack(makeConfig(true))
   var server = new WebpackDevServer({
-    static: { directory: cwd, publicPath: '/' },
+    // The harness ships with this package, so a game repo needs no dev/ of its
+    // own; one is still served first if it has one, for a game that wants to
+    // replace the harness.
+    static: [
+      { directory: path.join(cwd, 'dev'), publicPath: '/dev' },
+      { directory: path.join(__dirname, 'harness'), publicPath: '/dev' },
+      { directory: cwd, publicPath: '/' },
+    ],
     devMiddleware: { publicPath: '/dist/', writeToDisk: false },
     headers: { 'Access-Control-Allow-Origin': '*' },
     open: ['/dev/'],

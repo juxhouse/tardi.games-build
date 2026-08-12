@@ -11,7 +11,8 @@
     "tardi-build": "cli.js"
   },
   "files": [
-    "cli.js"
+    "cli.js",
+    "harness"
   ],
   "dependencies": {
     "@babel/core": "^7.28.0",

@@ -16,7 +16,7 @@ npm install --save-dev @juxhouse/tardi-build
 
 ```sh
 tardi-build        # build src/hand.js + src/table.js -> dist/ (ES5)
-tardi-build dev    # same build in watch mode, served with the game's dev/ harness on port 3142
+tardi-build dev    # same build in watch mode, served with the dev harness on port 3142
 ```
 
 A build writes the whole publishable game into `dist/`:
@@ -43,14 +43,26 @@ In a game's `package.json`:
 }
 ```
 
+## The dev harness
+
 `tardi-build dev` opens the harness at http://localhost:3142/dev/ in the browser
 and prints that link when the build finishes, for when it cannot open a browser
 itself (over SSH, in a container, in WSL). The root URL redirects there too.
 
+The harness ships in this package (`harness/index.html`), so a game repo needs no
+`dev/` folder of its own: it hosts the game's table and one hand per player in
+iframes and routes messages between them, doing the same intent translation the
+platform does, with no PeerJS and no lobby. It is generic — the title and the
+number of hands come from the game's `game.json`, which the dev server serves at
+`/game.json`.
+
+A game that wants a different harness can still put its own `dev/index.html` in
+its repo; that one is served instead.
+
 The build only ever writes to `dist/`, which it clears first; it never touches the
 rest of the game repo. `tardi-build dev` writes nothing to disk — it serves the
 bundles from memory at the same URLs a build writes them to, `/dist/hand.js` and
-`/dist/table.js`, which is what the game's `dev/index.html` loads.
+`/dist/table.js`, which is what the harness loads.
 
 
 ## Testing Locally
