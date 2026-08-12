@@ -98,3 +98,7 @@ Verify the generated version and install it into the game:
 npm version patch
 git push --follow-tags
 ```
+
+This package is released by a GitHub Action: pushing the `v*` tag that
+`npm version` creates runs `.github/workflows/publish.yml`, which publishes to
+npm. Nothing is published from a developer's machine.
