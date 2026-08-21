@@ -9,10 +9,27 @@
 
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden;
       background: #0f172a; color: #f8fafc; font-family: Arial, sans-serif; }
-    body { display: grid; gap: 12px; padding: 12px; box-sizing: border-box; }
-    .col { display: flex; flex-direction: column; min-height: 0; }
+    body { display: grid; grid-template-rows: minmax(0, 1fr);
+      gap: clamp(10px, 1vw, 18px); padding: clamp(10px, 1vw, 18px); box-sizing: border-box; }
+    .col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
     .label { font-size: 0.8rem; opacity: 0.7; margin: 0 0 6px; }
-    .frame { border: 0; flex: 1; width: 100%; border-radius: 8px; background: #020617; }
+    /* The space left under the label. The frame is centred in it, so a table
+       that does not fill the column is letterboxed rather than pinned to a corner. */
+    .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+    .frame { border: 0; width: 100%; height: 100%; border-radius: 8px; background: #020617; }
+    /* A Tardi table is a TV: always 16:9, whatever shape the dev's window is.
+       Sizing off the stage's own box (cq units) is the only way to fit a ratio
+       inside a box that can be limited by either side; width:100% + max-height
+       squashes the frame when the stage is short and wide. Browsers without
+       container queries keep the stretched frame above: wrong shape, still usable. */
+    .stage.table { container-type: size; }
+    @supports (container-type: size) {
+      .stage.table .frame {
+        width: min(100cqw, calc(100cqh * 16 / 9));
+        height: auto;
+        aspect-ratio: 16 / 9;
+      }
+    }
     .banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
       background: #15803d; padding: 8px 18px; border-radius: 6px; display: none; }
   </style>
@@ -65,12 +82,15 @@
         if (game.title) document.title = 'Tardi Game Dev - ' + game.title
         players = makePlayers(game)
 
-        // One column per hand with the table, wider, in the middle.
+        // One column per hand with the table, wider, in the middle. minmax(0, ...)
+        // rather than a bare fr: a column must be allowed to be narrower than the
+        // game rendered inside it, or a wide table pushes the hands off screen.
         var left = Math.ceil(players.length / 2)
         document.body.style.gridTemplateColumns =
-          repeat('1fr ', left) + '1.6fr ' + repeat(' 1fr', players.length - left)
+          repeat('minmax(0, 1fr) ', left) + 'minmax(0, 1.9fr) ' +
+          repeat(' minmax(0, 1fr)', players.length - left)
 
-        table = makeFrame('Table (TV)', SCRIPT.table)
+        table = makeFrame('Table (TV)', SCRIPT.table, true)
         for (var i = 0; i < players.length; i++) {
           document.body.appendChild(makeHand(players[i]).col)
           if (i === left - 1) document.body.appendChild(table.col)
@@ -140,19 +160,22 @@
         return made
       }
 
-      function makeFrame(label, scriptUrl) {
+      function makeFrame(label, scriptUrl, isTable) {
         var col = document.createElement('div')
         col.className = 'col'
         var caption = document.createElement('p')
         caption.className = 'label'
         caption.textContent = label
+        var stage = document.createElement('div')
+        stage.className = isTable ? 'stage table' : 'stage'
         var frame = document.createElement('iframe')
         frame.className = 'frame'
         frame.title = label
         frame.sandbox = 'allow-scripts allow-same-origin'
         frame.srcdoc = srcdoc(scriptUrl)
+        stage.appendChild(frame)
         col.appendChild(caption)
-        col.appendChild(frame)
+        col.appendChild(stage)
         return { col: col, frame: frame }
       }
 
