@@ -29,6 +29,22 @@ dist/
   assets/        copied from the repo root
 ```
 
+## game.json is checked first
+
+Both commands read the game's `game.json` before they build anything, and stop
+with an error if it is missing, is not valid JSON, or leaves out `sharedScreen`:
+
+```json
+"sharedScreen": "required"   the game cannot be played without the TV table
+"sharedScreen": "optional"   plays either way; the table adds to it
+"sharedScreen": "none"       hands only; the game shows no table
+```
+
+The platform lets players start a game with no shared screen, so it has to know
+which games that is honest for. Checking it in the build is what makes that hold
+for every game: it is the one step every game runs, and it catches the mistake on
+the dev's machine rather than after the release has been published.
+
 In a game's `package.json`:
 
 ```json

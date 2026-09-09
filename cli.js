@@ -77,11 +77,65 @@ function makeConfig(isDev) {
 }
 
 if (command === 'dev') {
+  readGameJson()
   runDev()
 } else if (command === 'build') {
+  readGameJson()
   runBuild()
 } else {
   console.error('tardi-build: unknown command "' + command + '". Use "tardi-build" or "tardi-build dev".')
+  process.exit(1)
+}
+
+// game.json is what the platform and the dev harness read to know how to run a
+// game, so a game missing it, or missing a field the platform switches on, is
+// broken before it is ever published. Check it here, at the one step every game
+// runs, and check it before building rather than after: a dev who forgot a field
+// hears about it immediately, and a broken game.json never reaches dist/.
+function readGameJson() {
+  var file = path.join(cwd, 'game.json')
+
+  if (!fs.existsSync(file)) {
+    fail('no game.json found. Every game needs one in its repo root.')
+  }
+
+  var game
+  try {
+    game = JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch (e) {
+    fail('game.json is not valid JSON: ' + e.message)
+  }
+
+  checkSharedScreen(game)
+  return game
+}
+
+// Whether the game uses the table on a TV is not a detail the platform can infer:
+// it decides whether the game can be offered at all when there is no shared
+// screen, so every game has to say.
+function checkSharedScreen(game) {
+  var value = game.sharedScreen
+  var valid = ['required', 'optional', 'none']
+
+  if (value === undefined) {
+    fail('game.json has no "sharedScreen".' + sharedScreenHelp())
+  }
+  if (valid.indexOf(value) === -1) {
+    fail('game.json has "sharedScreen": ' + JSON.stringify(value) + '.' + sharedScreenHelp())
+  }
+}
+
+function sharedScreenHelp() {
+  return '\n\n' +
+    '  Every game must declare how it uses the shared screen (the TV table):\n\n' +
+    '    "sharedScreen": "required"   the game cannot be played without the table\n' +
+    '    "sharedScreen": "optional"   plays either way; the table adds to it\n' +
+    '    "sharedScreen": "none"       hands only; the game shows no table\n\n' +
+    '  Add one of those to game.json and run again.'
+}
+
+function fail(message) {
+  console.error('tardi-build: ' + message)
   process.exit(1)
 }
 
@@ -104,6 +158,8 @@ function runBuild() {
 
 // dist/ is what gets published, so it needs everything the platform reads from a
 // game: the two bundles webpack just wrote, plus the game's metadata and assets.
+// game.json is already known to be there and valid; readGameJson checked it
+// before the build started.
 function copyStaticFiles() {
   copy('game.json')
   copy('assets')
