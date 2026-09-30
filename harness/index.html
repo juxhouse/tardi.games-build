@@ -16,23 +16,27 @@
     .side { display: flex; flex-direction: column; gap: clamp(10px, 1vw, 18px);
       min-width: 0; min-height: 0; }
     .side .col { flex: 1; }
-    .label { font-size: 0.8rem; opacity: 0.7; margin: 0 0 6px; }
-    .head { display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; margin: 0 0 6px; }
-    .head .label { margin: 0; }
-    .picker { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; }
-    .picker span { opacity: 0.7; margin-right: 4px; }
+    /* A fixed line-height so the table can subtract its caption's exact height. */
+    .label { font-size: 0.8rem; line-height: 1.2; opacity: 0.7; margin: 0 0 6px; }
+    .picker { display: flex; align-items: center; justify-content: center; gap: 10px;
+      font-size: 2rem; margin: 0 0 clamp(10px, 1vw, 18px); }
+    .picker span { opacity: 0.7; margin-right: 10px; }
     .picker button { font: inherit; color: inherit; background: #1e293b;
-      border: 1px solid #334155; border-radius: 4px; padding: 2px 10px; cursor: pointer; }
+      border: 1px solid #334155; border-radius: 10px; padding: 5px 25px; cursor: pointer; }
     .picker button:hover { background: #334155; }
     .picker button.current { background: #2563eb; border-color: #2563eb; cursor: default; }
     /* Counts outside game.json's players range stay clickable, to see how the
        game copes, but look it. */
     .picker button.outside { border-style: dashed; opacity: 0.6; }
-    /* The space left under the label. The frame is centred in it, so a table
-       that does not fill the column is letterboxed rather than pinned to a corner. */
+    /* The space left under the label (for the table, under the player buttons).
+       The frame is centred in it, so a table that does not fill the column is
+       letterboxed rather than pinned to a corner. */
     .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
     .frame { border: 0; width: 100%; height: 100%; border-radius: 8px; background: #020617; }
+    /* The table's caption rides on top of the letterboxed frame, not at the top
+       of the column, so it always sits right above the screen it names. */
+    .screen { display: flex; flex-direction: column; width: 100%; height: 100%; }
+    .screen .frame { flex: 1; min-height: 0; }
     /* A Tardi table is a TV: always 16:9, whatever shape the dev's window is.
        Sizing off the stage's own box (cq units) is the only way to fit a ratio
        inside a box that can be limited by either side; width:100% + max-height
@@ -40,8 +44,14 @@
        container queries keep the stretched frame above: wrong shape, still usable. */
     .stage.table { container-type: size; }
     @supports (container-type: size) {
+      /* The caption (0.8rem at line-height 1.2, plus its 6px margin) shares
+         the stage's height with the frame, so leave it out of the 16:9 fit. */
+      .stage.table .screen {
+        width: min(100cqw, calc((100cqh - 0.96rem - 6px) * 16 / 9));
+        height: auto;
+      }
       .stage.table .frame {
-        width: min(100cqw, calc(100cqh * 16 / 9));
+        flex: none;
         height: auto;
         aspect-ratio: 16 / 9;
       }
@@ -159,13 +169,8 @@
         return side
       }
 
-      // Puts the player-count buttons on the table's label row.
+      // Puts the player-count buttons at the top of the table's column.
       function addPicker(made, game) {
-        var head = document.createElement('div')
-        head.className = 'head'
-        made.col.replaceChild(head, made.caption)
-        head.appendChild(made.caption)
-
         var picker = document.createElement('div')
         picker.className = 'picker'
         var title = document.createElement('span')
@@ -174,7 +179,7 @@
         for (var n = 1; n <= MAX_PLAYERS; n++) {
           picker.appendChild(makeCountButton(n, game))
         }
-        head.appendChild(picker)
+        made.col.insertBefore(picker, made.col.firstChild)
       }
 
       function makeCountButton(n, game) {
@@ -249,10 +254,18 @@
         frame.title = label
         frame.sandbox = 'allow-scripts allow-same-origin'
         frame.srcdoc = srcdoc(scriptUrl)
-        stage.appendChild(frame)
-        col.appendChild(caption)
+        if (isTable) {
+          var screen = document.createElement('div')
+          screen.className = 'screen'
+          screen.appendChild(caption)
+          screen.appendChild(frame)
+          stage.appendChild(screen)
+        } else {
+          stage.appendChild(frame)
+          col.appendChild(caption)
+        }
         col.appendChild(stage)
-        return { col: col, caption: caption, frame: frame }
+        return { col: col, frame: frame }
       }
 
       function srcdoc(scriptUrl) {
