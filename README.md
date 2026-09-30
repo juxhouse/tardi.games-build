@@ -72,6 +72,10 @@ platform does, with no PeerJS and no lobby. It is generic — the title and the
 number of hands come from the game's `game.json`, which the dev server serves at
 `/game.json`.
 
+It starts with the game's minimum number of players. The 1-4 buttons above the
+table reload it with `?players=N` to try another count; with 3 or 4, the hands
+stack two to a side.
+
 A game that wants a different harness can still put its own `dev/index.html` in
 its repo; that one is served instead.
 

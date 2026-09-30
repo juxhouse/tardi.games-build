@@ -12,7 +12,23 @@
     body { display: grid; grid-template-rows: minmax(0, 1fr);
       gap: clamp(10px, 1vw, 18px); padding: clamp(10px, 1vw, 18px); box-sizing: border-box; }
     .col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    /* Each side of the table holds one or two hands, stacked and sharing its height. */
+    .side { display: flex; flex-direction: column; gap: clamp(10px, 1vw, 18px);
+      min-width: 0; min-height: 0; }
+    .side .col { flex: 1; }
     .label { font-size: 0.8rem; opacity: 0.7; margin: 0 0 6px; }
+    .head { display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin: 0 0 6px; }
+    .head .label { margin: 0; }
+    .picker { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; }
+    .picker span { opacity: 0.7; margin-right: 4px; }
+    .picker button { font: inherit; color: inherit; background: #1e293b;
+      border: 1px solid #334155; border-radius: 4px; padding: 2px 10px; cursor: pointer; }
+    .picker button:hover { background: #334155; }
+    .picker button.current { background: #2563eb; border-color: #2563eb; cursor: default; }
+    /* Counts outside game.json's players range stay clickable, to see how the
+       game copes, but look it. */
+    .picker button.outside { border-style: dashed; opacity: 0.6; }
     /* The space left under the label. The frame is centred in it, so a table
        that does not fill the column is letterboxed rather than pinned to a corner. */
     .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
@@ -46,6 +62,8 @@
     // harness can put its own dev/index.html in its repo; that one wins.
     (function () {
       var SCRIPT = { table: '/dist/table.js', hand: '/dist/hand.js' }
+      // The most hands the harness lays out: two stacked on each side of the table.
+      var MAX_PLAYERS = 4
 
       var banner = document.createElement('div')
       banner.className = 'banner'
@@ -82,19 +100,25 @@
         if (game.title) document.title = 'Tardi Game Dev - ' + game.title
         players = makePlayers(game)
 
-        // One column per hand with the table, wider, in the middle. minmax(0, ...)
-        // rather than a bare fr: a column must be allowed to be narrower than the
-        // game rendered inside it, or a wide table pushes the hands off screen.
+        // The table, wider, in the middle, with the hands split between the sides:
+        // the first half on the left, the rest on the right, stacked when a side
+        // has two. minmax(0, ...) rather than a bare fr: a column must be allowed
+        // to be narrower than the game rendered inside it, or a wide table pushes
+        // the hands off screen.
         var left = Math.ceil(players.length / 2)
+        var leftSide = makeSide()
+        var rightSide = players.length > left ? makeSide() : null
         document.body.style.gridTemplateColumns =
-          repeat('minmax(0, 1fr) ', left) + 'minmax(0, 1.9fr) ' +
-          repeat(' minmax(0, 1fr)', players.length - left)
+          'minmax(0, 1fr) minmax(0, 1.9fr)' + (rightSide ? ' minmax(0, 1fr)' : '')
 
         table = makeFrame('Table (TV)', SCRIPT.table, true)
+        addPicker(table, game)
         for (var i = 0; i < players.length; i++) {
-          document.body.appendChild(makeHand(players[i]).col)
-          if (i === left - 1) document.body.appendChild(table.col)
+          (i < left ? leftSide : rightSide).appendChild(makeHand(players[i]).col)
         }
+        document.body.appendChild(leftSide)
+        document.body.appendChild(table.col)
+        if (rightSide) document.body.appendChild(rightSide)
         document.body.appendChild(banner)
 
         window.addEventListener('message', onMessage)
@@ -102,10 +126,8 @@
         table.frame.addEventListener('load', notifyPlayers)
       }
 
-      // A game declares a range of players; dev on the minimum, which is the
-      // configuration every game supports and the one it is usually written for.
       function makePlayers(game) {
-        var count = (game.players && game.players.min) || 2
+        var count = playerCount(game)
         var made = []
         for (var i = 1; i <= count; i++) {
           made.push({ playerId: 'p' + i, nick: 'Player ' + i })
@@ -113,10 +135,64 @@
         return made
       }
 
-      function repeat(text, times) {
-        var out = ''
-        for (var i = 0; i < times; i++) out += text
-        return out
+      // The dev picks a count with the buttons above the table, which reload the
+      // page with ?players=N. Without one, dev on the game's minimum: the
+      // configuration every game supports and the one it is usually written for.
+      function playerCount(game) {
+        var match = /[?&]players=(\d+)/.exec(window.location.search)
+        var asked = match ? parseInt(match[1], 10) : 0
+        if (asked >= 1 && asked <= MAX_PLAYERS) return asked
+        return minPlayers(game)
+      }
+
+      function minPlayers(game) {
+        return (game.players && game.players.min) || 2
+      }
+
+      function maxPlayers(game) {
+        return (game.players && game.players.max) || minPlayers(game)
+      }
+
+      function makeSide() {
+        var side = document.createElement('div')
+        side.className = 'side'
+        return side
+      }
+
+      // Puts the player-count buttons on the table's label row.
+      function addPicker(made, game) {
+        var head = document.createElement('div')
+        head.className = 'head'
+        made.col.replaceChild(head, made.caption)
+        head.appendChild(made.caption)
+
+        var picker = document.createElement('div')
+        picker.className = 'picker'
+        var title = document.createElement('span')
+        title.textContent = 'Players'
+        picker.appendChild(title)
+        for (var n = 1; n <= MAX_PLAYERS; n++) {
+          picker.appendChild(makeCountButton(n, game))
+        }
+        head.appendChild(picker)
+      }
+
+      function makeCountButton(n, game) {
+        var button = document.createElement('button')
+        button.type = 'button'
+        button.textContent = String(n)
+        var classes = []
+        if (n === players.length) classes.push('current')
+        if (n < minPlayers(game) || n > maxPlayers(game)) {
+          classes.push('outside')
+          button.title = 'Outside the ' + minPlayers(game) + '-' + maxPlayers(game) +
+            ' players this game declares in game.json'
+        }
+        button.className = classes.join(' ')
+        button.onclick = function () {
+          if (n !== players.length) window.location.search = '?players=' + n
+        }
+        return button
       }
 
       function onMessage(event) {
@@ -176,7 +252,7 @@
         stage.appendChild(frame)
         col.appendChild(caption)
         col.appendChild(stage)
-        return { col: col, frame: frame }
+        return { col: col, caption: caption, frame: frame }
       }
 
       function srcdoc(scriptUrl) {
