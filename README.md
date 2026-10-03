@@ -4,7 +4,8 @@ The single, central definition of how a [Tardi](https://tardi.games) game is bui
 
 A game repo lists `@juxhouse/tardi-build` as a devDependency and runs it via npm
 scripts; the game dev never configures a bundler. Output is two self-contained
-ES5 IIFE bundles that load on a 2018 Tizen TV (Chromium ~38-56).
+ES5 IIFE bundles that load on old browsers (Chromium ~38-56, a 2018 Tizen TV's,
+for example).
 
 ## Install
 
@@ -35,9 +36,9 @@ Both commands read the game's `game.json` before they build anything, and stop
 with an error if it is missing, is not valid JSON, or leaves out `sharedScreen`:
 
 ```json
-"sharedScreen": "required"   the game cannot be played without the TV table
-"sharedScreen": "optional"   plays either way; the table adds to it
-"sharedScreen": "none"       hands only; the game shows no table
+"sharedScreen": "required"   the game cannot be played without a Shared Screen
+"sharedScreen": "optional"   plays either way; the Shared Screen adds to it
+"sharedScreen": "none"       hands only; the game shows nothing on a Shared Screen
 ```
 
 The platform lets players start a game with no shared screen, so it has to know

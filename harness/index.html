@@ -37,7 +37,7 @@
        of the column, so it always sits right above the screen it names. */
     .screen { display: flex; flex-direction: column; width: 100%; height: 100%; }
     .screen .frame { flex: 1; min-height: 0; }
-    /* A Tardi table is a TV: always 16:9, whatever shape the dev's window is.
+    /* The Shared Screen is always 16:9 here, whatever shape the dev's window is.
        Sizing off the stage's own box (cq units) is the only way to fit a ratio
        inside a box that can be limited by either side; width:100% + max-height
        squashes the frame when the stage is short and wide. Browsers without
@@ -121,7 +121,7 @@
         document.body.style.gridTemplateColumns =
           'minmax(0, 1fr) minmax(0, 1.9fr)' + (rightSide ? ' minmax(0, 1fr)' : '')
 
-        table = makeFrame('Table (TV)', SCRIPT.table, true)
+        table = makeFrame('Table (Shared Screen)', SCRIPT.table, true)
         addPicker(table, game)
         for (var i = 0; i < players.length; i++) {
           (i < left ? leftSide : rightSide).appendChild(makeHand(players[i]).col)
@@ -298,7 +298,7 @@
         if (window.console && console.warn) console.warn('tardi-build dev: ' + text)
       }
 
-      // The harness runs in the dev browser, but that can be an old TV browser
+      // The harness runs in the dev browser, but that can be an old browser
       // too, and Object.assign is not there before Chromium 45.
       function assign(target) {
         for (var i = 1; i < arguments.length; i++) {

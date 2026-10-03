@@ -1,7 +1,7 @@
 {
   "name": "@juxhouse/tardi-build",
   "version": "0.1.9",
-  "description": "Tardi Games build tool. Bundles a game's src/ into ES5 hand.js/table.js for 2018 TV browsers.",
+  "description": "Tardi Games build tool. Bundles a game's src/ into ES5 hand.js/table.js for old browsers, like those on 2018 TVs.",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",

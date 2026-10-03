@@ -10,7 +10,7 @@
 //
 // A game repo lists @juxhouse/tardi-build as a devDependency and runs it via an npm
 // script ("build": "tardi-build"); the dev never configures a bundler. Output
-// is two self-contained ES5 IIFE bundles that load on a 2018 Tizen TV
+// is two self-contained ES5 IIFE bundles that load on old browsers
 // (Chromium ~38-56), per essence/docs/COMPATIBILITY.md.
 
 var fs = require('fs')
@@ -110,9 +110,9 @@ function readGameJson() {
   return game
 }
 
-// Whether the game uses the table on a TV is not a detail the platform can infer:
-// it decides whether the game can be offered at all when there is no shared
-// screen, so every game has to say.
+// Whether the game uses the Shared Screen is not a detail the platform can
+// infer: it decides whether the game can be offered at all when there is no
+// Shared Screen, so every game has to say.
 function checkSharedScreen(game) {
   var value = game.sharedScreen
   var valid = ['required', 'optional', 'none']
@@ -127,10 +127,10 @@ function checkSharedScreen(game) {
 
 function sharedScreenHelp() {
   return '\n\n' +
-    '  Every game must declare how it uses the shared screen (the TV table):\n\n' +
-    '    "sharedScreen": "required"   the game cannot be played without the table\n' +
-    '    "sharedScreen": "optional"   plays either way; the table adds to it\n' +
-    '    "sharedScreen": "none"       hands only; the game shows no table\n\n' +
+    '  Every game must declare how it uses the Shared Screen, the screen all players see:\n\n' +
+    '    "sharedScreen": "required"   the game cannot be played without a Shared Screen\n' +
+    '    "sharedScreen": "optional"   plays either way; the Shared Screen adds to it\n' +
+    '    "sharedScreen": "none"       hands only; the game shows nothing on a Shared Screen\n\n' +
     '  Add one of those to game.json and run again.'
 }
 
